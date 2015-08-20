@@ -1,0 +1,2 @@
+# discounts
+Discounts for SwipeStripe
