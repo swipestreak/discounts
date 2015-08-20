@@ -10,10 +10,21 @@ class StreakDiscountPercentageExtension extends GridSheetModelExtension {
     const ModelClass = 'Product';
     const RelatedModelClass = 'Product';
 
+    /**
+     * Return extra fields added for discounts as part of db array. If current controller is
+     * database admin then returns also fields to add from newly defined discount types.
+     *
+     * @param $class
+     * @param $extension
+     * @param $args
+     * @return array
+     */
     public static function get_extra_config($class, $extension, $args) {
         $config = parent::get_extra_config($class, $extension, $args) ?: array();
 
-        $fieldSpecs = static::field_specs();
+        $existingFieldsOnly = !Controller::curr() instanceof DatabaseAdmin;
+
+        $fieldSpecs = static::field_specs($existingFieldsOnly);
 
         $config = array_merge(
             $config,
@@ -24,47 +35,33 @@ class StreakDiscountPercentageExtension extends GridSheetModelExtension {
         return $config;
     }
 
-    public static function calc_discounted_amount(Price $amount, $discount) {
-        $original = $amount->getAmount();
+    /**
+     * Returns the least of the passed in price and the price with this discount applied, or null
+     * if this discounted price is larger than the existing one. This can then be used in extension
+     * call to find the least discounted price.
+     *
+     * @param Price $amount
+     * @return Price|null
+     */
+    public function provideLeastAmount(Price $amount) {
+        /** @var StreakDiscountType $discountType */
+        if (($discountType = $this->owner->StreakDiscountType()) && $discountType->exists()) {
+            $discounted = $discountType->discountedAmount($amount);
 
-        $new = new Price();
+            $res = Zend_Locale_Math::Comp($amount->getAmount(), $discounted->getAmount());
 
-        $new->setCurrency('NZD');
-        $new->setAmount(
-            Zend_Locale_Math::round(
-                Zend_Locale_Math::Sub(
-                    $original,
-                    Zend_Locale_Math::Mul(
-                        $original,
-                        $discount / 100
-                    )
-                )
-            )
-        );
-        return $new;
+            if ($res) {
+                return $discounted;
+            }
+        }
+        return null;
     }
 
     /**
-     * @param Price $amount
-     * @param       $discountPercentage
-     * @return bool
+     * Add fields for this discount to CMS form.
+     *
+     * @param FieldList $fields
      */
-    public function alterAmount(Price $amount, $discountPercentage, Price $originalAmount) {
-        if (!$discountPercentage) {
-            return false;
-        }
-        $discounted = self::calc_discounted_amount($originalAmount, $discountPercentage);
-
-        $res = Zend_Locale_Math::Comp($amount->getAmount(), $discounted->getAmount());
-
-        if ($res) {
-
-            $amount->setValue($discounted->getAmount());
-            return true;
-        }
-        return false;
-    }
-
     public function updateProductCMSFields(FieldList $fields) {
         array_map(
             function ($fieldName) use (&$fields) {
@@ -79,37 +76,51 @@ class StreakDiscountPercentageExtension extends GridSheetModelExtension {
         );
     }
 
-
-    public static function field_specs() {
+    /**
+     * Return the names and datatypes of columns for this discount.
+     *
+     * @param bool $appliedOnly true to return only columns added to the extended model, false to return all columns
+     *                          including ones that would be added next build
+     * @return array
+     */
+    public static function field_specs($appliedOnly = true) {
         $fields = array(
             StreakDiscountTypePercentageExtension::ColumnSuffix => self::PercentageFieldSchema
         );
         $discountCodes = array_unique(StreakDiscountTypePercentageExtension::discount_codes(true));
 
-        $fieldsSpecs = array();
+        $fieldSpecs = array();
 
         foreach ($discountCodes as $fieldName) {
             if ($fieldName) {
                 foreach ($fields as $specName => $schema) {
-                    $fieldsSpecs[$fieldName . $specName] = $schema;
+                    $fieldSpecs[$fieldName . $specName] = $schema;
                 }
             }
         }
-        return $fieldsSpecs;
-    }
-
-    public function discountCodes($discountOnly = true) {
-        return StreakDiscountTypePercentageExtension::discount_codes($discountOnly);
+        $fieldList = DB::fieldList(static::ModelClass);
+        if ($appliedOnly && $fieldSpecs) {
+            $fieldSpecs = array_intersect_key(
+                $fieldSpecs,
+                $fieldList
+            );
+        }
+        return $fieldSpecs;
     }
 
     public function defaultColumnName() {
         return StreakDiscountTypePercentageExtension::DefaultColumnName;
     }
 
-
+    /**
+     * Adds an entry to the discountOptions map for this discount with [ID => Label] suitable
+     * for use in a dropdown field.
+     *
+     * @param array $discountOptions
+     */
     public function provideDiscountOptions(array &$discountOptions) {
         foreach (StreakDiscountTypePercentageExtension::discount_types() as $discountType) {
-            $label = $discountType->Title . '( ' . $discountType->Metric . '% )';
+            $label = $discountType->Title . '( ' . $discountType->Measure . '% )';
 
             $discountOptions += array($discountType->ID => $label);
         }
@@ -140,12 +151,18 @@ class StreakDiscountPercentageExtension extends GridSheetModelExtension {
             'DiscountedPrice' => array(
                 'title' => 'Discounted Price',
                 'callback' => function ($record, $col) {
-                    return new TextField(
-                        'DiscountedPrice',
-                        '',
-                        $record->discountedPrice()
+                    /** @var StreakDiscountType $discountType */
+                    if (($discountType = $record->StreakDiscountType()) && $discountType->exists()) {
+                        if ($discountedPrice = $discountType->discountedAmount($record->Price)) {
+                            $discountPrice = $discountedPrice->getAmount();
 
-                    );
+                            return new ReadonlyField(
+                                'DiscountedPrice',
+                                '',
+                                $discountPrice
+                            );
+                        }
+                    }
                 }
             )
         );

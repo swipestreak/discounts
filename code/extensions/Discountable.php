@@ -8,8 +8,9 @@ class StreakDiscountableExtension extends DataExtension {
     );
 
     /**
-     * Returns the one or more active DiscountType in order of preference (or an empty array if none found).
-     * @return array
+     * Returns the one or more active DiscountTypes (site, member, product) in order of preference (or an empty array if none found).
+     *
+*@return array
      */
     public function resolveDiscountTypes() {
         $discountTypes = array();
@@ -41,7 +42,7 @@ class StreakDiscountableExtension extends DataExtension {
 
                 $column = $discountType->getDiscountColumnName();
 
-                $discountModifier = $this->owner->$column ?: $discountType->Metric;
+                $discountModifier = $this->owner->$column ?: $discountType->Measure;
 
                 if ($discountModifier) {
                     $amount = new Price();

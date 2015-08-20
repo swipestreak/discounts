@@ -1,6 +1,7 @@
 <?php
 
 class StreakDiscountTypePriceExtension extends StreakDiscountTypeExtension
+    implements StreakDiscountTypeInterface
 {
     const ColumnFieldName = 'UsePriceColumn';
 
@@ -36,6 +37,32 @@ class StreakDiscountTypePriceExtension extends StreakDiscountTypeExtension
                 $this()->{StreakDiscountTypePriceExtension::ColumnFieldName} = null;
             }
         }
+    }
+
+    /**
+     * Returns amount reduced by $this->Measure.
+     *
+     * @param Price|number $amount
+     * @param $discount
+     * @return Price
+     */
+    public function discountedAmount($forAmount) {
+        if ($this->owner->UsePriceColumn) {
+            $price = new Price();
+            // TODO get from shop config
+            $price->setCurrency('NZD');
+
+            if ($forAmount instanceof Money) {
+                $price->setAmount($forAmount->getAmount());
+            } else {
+                $price->setAmount($forAmount);
+            }
+            $price->setAmount(
+                Zend_Locale_Math::Sub($price->getAmount(), $this->owner->Measure, 10)
+            );
+            return $price;
+        }
+        return null;
     }
 
     public function provideEditableColumns(array &$fieldSpecs) {
@@ -95,8 +122,7 @@ class StreakDiscountTypePriceExtension extends StreakDiscountTypeExtension
      * @return mixed
      */
     public function provideRelatedEditableColumns($relatedModelClass, $relatedID, array &$fieldSpecs) {
-        // TODO: Implement provideRelatedEditableColumns() method.
-        xdebug_break();
+        // TODO: Implement provideRelatedEditableColumns() method if needed.
     }
 
     /**

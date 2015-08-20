@@ -15,7 +15,7 @@ class StreakDiscountType extends DataObject {
     private static $db = array(
         'Code' => 'Varchar(6)',
         'Title' => 'Varchar(32)',
-        'Metric' => 'Decimal(5,2)'
+        'Measure' => 'Decimal(5,2)'
     );
     private static $has_many = array(
         'Members' => 'Member',
@@ -31,6 +31,29 @@ class StreakDiscountType extends DataObject {
         'Code' => 'Short Code',
         'Title' => 'Title'
     );
+
+    /**
+     * Iterate through extensions to ask them to calculate the new amount.
+     *
+     * @param $forAmount
+     * @return mixed|Price
+     */
+    public function discountedAmount($forAmount) {
+        // TODO get from shop config
+        $price = new Price();
+        $price->setCurrency('NZD');
+
+        if ($values = $this->extend('discountedAmount', $forAmount)) {
+            $price = reset($values);
+        } else {
+            if ($forAmount instanceof Money) {
+                $price->setAmount($forAmount->getAmount());
+            } else {
+                $price->setAmount($forAmount);
+            }
+        }
+        return $price;
+    }
 
     public function getCMSFields() {
         $fields = parent::getCMSFields();
@@ -60,7 +83,6 @@ class StreakDiscountType extends DataObject {
     public static function get_by_code($code) {
         return StreakDiscountType::get()->filter('Code', $code)->first();
     }
-
 
     /**
      * Return the name of all unique 'Discount Price' columns, optionally excluding

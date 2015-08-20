@@ -1,10 +1,15 @@
 <?php
 
+/**
+ * @property Measure
+ */
 class StreakDiscountTypePercentageExtension extends StreakDiscountTypeExtension
+    implements StreakDiscountTypeInterface
 {
     const ColumnFieldName = 'UsePercentageColumn';
     const ColumnSuffix = 'Percentage';
     const Symbol = '%';
+    const OneHundred = 100.0;
 
     private static $db = array(
         self::ColumnFieldName => self::ColumnFieldSchema
@@ -32,11 +37,51 @@ class StreakDiscountTypePercentageExtension extends StreakDiscountTypeExtension
         }
     }
 
+    /**
+     * Returns the amount minus percentage from Measure.
+     *
+     * @param Price $forAmount
+     * @return Price
+     */
+    public function discountedAmount($forAmount) {
+        if ($this->owner->UsePercentageColumn) {
+            $price = new Price();
+            // TODO get from shop config
+            $price->setCurrency('NZD');
+
+            if ($forAmount instanceof Money) {
+                $price->setAmount($forAmount->getAmount());
+            } else {
+                $price->setAmount($forAmount);
+            }
+            $original = $price->getAmount();
+
+            // avoid divide by 0
+            if ($this->owner->Measure != 0) {
+                $percentage = Zend_Locale_Math::Div($this->owner->Measure, self::OneHundred, 10);
+
+                $difference = Zend_Locale_Math::Mul(
+                    $original,
+                    $percentage,
+                    10
+                );
+                $price->setAmount(
+                    Zend_Locale_Math::Sub(
+                        $original,
+                        $difference,
+                        10
+                    )
+                );
+            }
+            return $price;
+        }
+        return null;
+    }
+
     public function provideEditableColumns(array &$fieldSpecs) {
 
         $options = array();
         $value = null;
-        $fieldName = static::ColumnFieldName;
 
         $this->provideDiscountTypeOptions($options, $value);
 
@@ -68,8 +113,8 @@ class StreakDiscountTypePercentageExtension extends StreakDiscountTypeExtension
                     );
                 }
             ),
-            'Metric' => array(
-                'title' => 'Value (% only)',
+            'Measure' => array(
+                'title' => 'Value (% or $ amount)',
                 'callback' => function($record, $col) {
                     return new NumericField($col, null, $record->$col);
                 }
@@ -98,4 +143,27 @@ class StreakDiscountTypePercentageExtension extends StreakDiscountTypeExtension
         // TODO: Implement provideRelatedEditableColumns() method.
     }
 
+    /**
+     * Called for each new row in a grid when it is saved.
+     *
+     * @param $record
+     * @return bool
+     */
+    public function gridSheetHandleNewRow(array &$row) {
+        $this->owner->update(
+            $this->getUpdateColumns($this->owner->class, $row)
+        );
+    }
+
+    /**
+     * Called to each existing row in a grid when it is saved.
+     *
+     * @param $record
+     * @return bool
+     */
+    public function gridSheetHandleExistingRow(array &$row) {
+        $this->owner->update(
+            $this->getUpdateColumns($this->owner->class, $row)
+        );
+    }
 }
