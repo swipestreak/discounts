@@ -1,0 +1,29 @@
+---
+Name: swipestreak-discounts-config
+---
+Customer:
+  extensions:
+    - StreakDiscountsMemberExtension
+StreakConfig:
+  extensions:
+    - StreakDiscounts_ConfigExtension
+StreakDiscountType:
+  extensions:
+    - StreakDiscountTypePriceExtension
+    - StreakDiscountTypePercentageExtension
+StreakAdmin:
+  managed_models:
+    - StreakDiscountType
+#---
+#Only:
+#  classexists: StreakDiscountModule
+#---
+#Product:
+#  extensions:
+#    - StreakDiscountPriceExtension
+#    - StreakDiscountPercentageExtension
+#Variation:
+#  extensions:
+#    - StreakDiscountPriceExtension
+#    - StreakDiscountPercentageExtension
+#---
