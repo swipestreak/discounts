@@ -151,21 +151,21 @@ class StreakDiscountPriceExtension extends GridSheetModelExtension
                     )->setEmptyString('No discount');
                 }
             ),
-            'DiscountedPrice' => array(
-                'title' => 'Discounted Price',
+            'DiscountByPrice' => array(
+                'title' => 'Sale Price ($)',
                 'callback' => function ($record, $col) {
                     /** @var StreakDiscountType $discountType */
+                    $discountPrice = $record->Price;
                     if (($discountType = $record->StreakDiscountType()) && $discountType->exists()) {
                         if ($discountedPrice = $discountType->discountedAmount($record->Price)) {
                             $discountPrice = $discountedPrice->getAmount();
-
-                            return new ReadonlyField(
-                                'DiscountedPrice',
-                                '',
-                                $discountPrice
-                            );
                         }
                     }
+                    return new ReadonlyField(
+                        'DiscountByPrice',
+                        '',
+                        $discountPrice
+                    );
                 }
             )
         );
