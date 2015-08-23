@@ -46,18 +46,17 @@ class StreakDiscountTypePercentageExtension extends StreakDiscountTypeExtension
     public function discountedAmount($forAmount) {
         if ($this->owner->UsePercentageColumn) {
             $price = new Price();
-            // TODO get from shop config
-            $price->setCurrency('NZD');
-
             if ($forAmount instanceof Money) {
                 $price->setAmount($forAmount->getAmount());
+                $price->setCurrency($forAmount->getCurrency());
             } else {
                 $price->setAmount($forAmount);
+                $price->setCurrency(ShopConfig::current_shop_config()->BaseCurrency);
             }
-            $original = $price->getAmount();
-
-            // avoid divide by 0
+            // only recalculate if there is a percentage
             if ($this->owner->Measure != 0) {
+                $original = $price->getAmount();
+
                 $percentage = Zend_Locale_Math::Div($this->owner->Measure, self::OneHundred, 10);
 
                 $difference = Zend_Locale_Math::Mul(

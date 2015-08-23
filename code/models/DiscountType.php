@@ -39,17 +39,20 @@ class StreakDiscountType extends DataObject {
      * @return mixed|Price
      */
     public function discountedAmount($forAmount) {
-        // TODO get from shop config
         $price = new Price();
-        $price->setCurrency('NZD');
 
         if ($values = $this->extend('discountedAmount', $forAmount)) {
             $price = reset($values);
+            if (!$price->getCurrency()) {
+                $price->setCurrency(ShopConfig::current_shop_config()->BaseCurrency);
+            }
         } else {
             if ($forAmount instanceof Money) {
                 $price->setAmount($forAmount->getAmount());
+                $price->setCurrency($forAmount->getCurrency());
             } else {
                 $price->setAmount($forAmount);
+                $price->setCurrency(ShopConfig::current_shop_config()->BaseCurrency);
             }
         }
         return $price;

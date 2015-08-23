@@ -49,8 +49,7 @@ class StreakDiscountTypePriceExtension extends StreakDiscountTypeExtension
     public function discountedAmount($forAmount) {
         if ($this->owner->UsePriceColumn) {
             $price = new Price();
-            // TODO get from shop config
-            $price->setCurrency('NZD');
+            $price->setCurrency(ShopConfig::current_shop_config()->BaseCurrency);
 
             if ($forAmount instanceof Money) {
                 $price->setAmount($forAmount->getAmount());
