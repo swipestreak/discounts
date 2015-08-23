@@ -12,6 +12,8 @@ StreakDiscountType:
     - StreakDiscountTypePriceExtension
     - StreakDiscountTypePercentageExtension
 StreakAdmin:
+  extensions:
+    - StreakDiscounts_AdminExtension
   managed_models:
     - StreakDiscountType
 #---

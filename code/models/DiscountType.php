@@ -76,7 +76,7 @@ class StreakDiscountType extends DataObject {
 
         if ($this->isInDB()) {
             $fields->addFieldToTab('Root.Main',
-                new LiteralField('buildLink', '<a href="/dev/build?flush=1">Add fields to Products, Variations and Accessories</a>')
+                new LiteralField('buildLink', '<a href="/dev/build?flush=1">Add fields to discountable objects</a>')
             );
         }
 
